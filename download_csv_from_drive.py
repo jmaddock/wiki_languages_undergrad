@@ -14,9 +14,9 @@ import argparse
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/drive-python-quickstart.json
 SCOPES = 'https://www.googleapis.com/auth/drive.readonly'
-CLIENT_SECRET_FILE = 'client_secret.json'
+DEFAULT_CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Drive API Python Quickstart'
-FOLDER_ID = '0Bx8VoNOSwBLcVzMyUUxRaFpXZTA'
+DEFAULT_FOLDER_ID = '0Bx8VoNOSwBLcVzMyUUxRaFpXZTA'
 
 def get_credentials(flags):
     """Gets valid user credentials from storage.
@@ -27,6 +27,10 @@ def get_credentials(flags):
     Returns:
         Credentials, the obtained credential.
     """
+    if flags.client_secret:
+        client_secret = flags.client_secret
+    else:
+        client_secret = DEFAULT_CLIENT_SECRET_FILE
     script_dir = os.path.dirname(os.path.realpath(__file__))
     credential_dir = os.path.join(script_dir, '.credentials')
     if not os.path.exists(credential_dir):
@@ -36,7 +40,7 @@ def get_credentials(flags):
     store = oauth2client.file.Storage(credential_path)
     credentials = store.get()
     if not credentials or credentials.invalid:
-        flow = client.flow_from_clientsecrets(CLIENT_SECRET_FILE, SCOPES)
+        flow = client.flow_from_clientsecrets(client_secret, SCOPES)
         flow.user_agent = APPLICATION_NAME
         if flags:
             credentials = tools.run_flow(flow, store, flags)
@@ -84,12 +88,18 @@ def main():
     parser = argparse.ArgumentParser(parents=[tools.argparser])
     parser.add_argument('-o','--output_dir')
     parser.add_argument('-i','--drive_folder_id')
+    parser.add_argument('-c','--client_secret')
     flags = parser.parse_args()
+
+    if flags.drive_folder_id:
+        folder_id = flags.drive_folder_id
+    else:
+        folder_id = DEFAULT_FOLDER_ID
     
     credentials = get_credentials(flags)
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('drive', 'v2', http=http)
-    file_names = get_file_list(FOLDER_ID,service)
+    file_names = get_file_list(folder_id,service)
     if not file_names:
         print('No files found.')
     else:
