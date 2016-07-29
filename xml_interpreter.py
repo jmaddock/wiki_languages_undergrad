@@ -9,15 +9,17 @@ df=pd.DataFrame(columns=['subheading','comment'])
 index=2;
 
 # All necessary re-patterns
+MISC=r'(\s*(\[\[[^\]]*]])*\s*.){0,10}'
 SUBHEAD=r'==[^=]+==';
 COMMENT_REG=r'\[\[Usuario[^|]+\|[^|]+]]';
-COMMENT_TALK=COMMENT_REG+r'\s*\(*\[\[Usuario [^|]+:[^|]+\|[^\]]+]]';
-COMMENT_ANON=r'\{\{nofirmado\|[^|]+}}';
+# Add some small gap
+COMMENT_TALK=COMMENT_REG+MISC+r'\[\[Usuario [^|]+:[^|]+\|[^\]]+]]';
+COMMENT_ANON=r'\{\{[Nn]ofirmado\|[^}]+}}';
 ALL='|'.join([SUBHEAD,COMMENT_TALK,COMMENT_ANON,COMMENT_REG])
 
 
 
-# Can I simplify this appending
+# Can I simplify this appending method
 def comments(position, subheading, comment): 
      global index;
      df.loc[index]=[subheading, comment];
@@ -39,6 +41,7 @@ def parser(position, subheading):
 
 def main ():
     parser(0, 'top_level');
+
     df=pd.DataFrame(index=[],columns=['lang','page_id','page_title','subheading_title','user_text','indentation_depth','line_in_subheading']);
 
 
