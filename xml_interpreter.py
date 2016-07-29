@@ -4,16 +4,15 @@ import pandas as pd
 import numpy as np
 
 file=open('/Users/Bennett/Desktop/scraping/778946.txt').read();
-df_final=pd.DataFrame(columns=['lang','page_id','page_title','subheading_title','user_text','indentation_depth','line_in_subheading'])
+#df_final=pd.DataFrame(columns=['lang','page_id','page_title','subheading_title','user_text','indentation_depth','line_in_subheading'])
 df=pd.DataFrame(columns=['subheading','comment'])
 index=2;
 
 # All necessary re-patterns
-MISC=r'(\s*(\[\[[^\]]*]])*\s*.){0,10}'
+MISC=r'(\s*(\[\[[^\]]*]])*\s*.){0,10}'  #matches either a space, a page element (anything between brackets), or any character up to 10 times
 SUBHEAD=r'==[^=]+==';
 COMMENT_REG=r'\[\[Usuario[^|]+\|[^|]+]]';
-# Add some small gap
-COMMENT_TALK=COMMENT_REG+MISC+r'\[\[Usuario [^|]+:[^|]+\|[^\]]+]]';
+COMMENT_TALK=COMMENT_REG+MISC+r'\[\[Usuario [^|]+:[^|]+\|[^\]]+]]';   # Talk page has a regular comment, some misc, then a talk comment
 COMMENT_ANON=r'\{\{[Nn]ofirmado\|[^}]+}}';
 ALL='|'.join([SUBHEAD,COMMENT_TALK,COMMENT_ANON,COMMENT_REG])
 
@@ -38,20 +37,11 @@ def parser(position, subheading):
         else:
             comments(position+x.end(), subheading, x.group());
 
-
+# Give individual pages to parser()
 def main ():
     parser(0, 'top_level');
 
     df=pd.DataFrame(index=[],columns=['lang','page_id','page_title','subheading_title','user_text','indentation_depth','line_in_subheading']);
 
-
-print(parser(0, 'top_level'))
+parser(0, 'top_level')
 print(df)
-
-
-# How do I capture this one very long comment that I dont even understand:
-
-#{{Nofirmado|80.102.224.237|<font style=\"font-family:Verdana; font-size:11px; font-variant:small-caps\">'''[[Usuario:Thor8|
-#<font color=firebrick>Thor</font><font color=orange>8</font>]]''' [[Image:Banner of the Holy Roman Emperor
-#(after 1400).svg|25px]] '''([[Usuario Discusi\u00f3n:Thor8|<font color=firebrick>Di
-#</font><font color=orange>scusi</font><font color=firebrick>\u00f3n</font>]])'''</font> 18:54 21 ago 2008 (UTC)}}
