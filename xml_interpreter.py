@@ -1,9 +1,8 @@
 import re
 import pandas as pd
-import numpy as np
 
 #df_final=pd.DataFrame(columns=['lang','page_id','page_title','subheading_title','user_text','indentation_depth','line_in_subheading'])
-df=pd.DataFrame(columns=['subheading','comment','indentation'])
+df=pd.DataFrame(columns=['lang','page_id','page_title','subheading_title','user_text','indentation_depth','comment_num'])
 index=1
      
 # All necessary re-patterns
@@ -13,10 +12,12 @@ COMMENT_REG=r'\[\[Usuario[^|]+\|[^|]+]]'
 COMMENT_TALK=COMMENT_REG+MISC+r'\[\[Usuario [^|]+:[^|]+\|[^\]]+]]'   # Talk page has a regular comment, some misc, then a talk comment
 COMMENT_ANON=r'\{\{[Nn]ofirmado\|[^}]+}}'
 BEGINNING=r'"\*":'
-NEW_LINE=r'\\n\\n'
+NEW_LINE=r'\\n\\n|\\n'
+ALL='|'.join([COMMENT_TALK,COMMENT_ANON,COMMENT_REG])
+
 
 # Measures indentation by the number of colons at the beginning of a comment, after bullets or numbering symbols
-def identify_comment_metrics(sub_title,comment_num,comment):
+def identify_comment_metrics(sub_title,comment,author):
      global index, df
      indent=0
      while comment.startswith('*') or comment.startswith('#'):
@@ -24,30 +25,34 @@ def identify_comment_metrics(sub_title,comment_num,comment):
      while comment.startswith(':'):
           indent+=1
           comment=comment[1:-1]
-     df.loc[index]=(sub_title,comment_num,indent)
+     df.loc[index]=('simple','page_id','page_title',sub_title,author,indent,index)
      index+=1        
      
         
 # Identify subheading title, find all comments, then loop through and break them into comments
 # As an added measure, disregards newline markers from subheadings
 def split_into_comments (subheading):
-     if re.search(SUBHEAD, subheading):
+     if re.match(SUBHEAD, subheading):
           sub_title=re.search(SUBHEAD, subheading)
           subheading=subheading[sub_title.end():-1]
           sub_title=sub_title.group()
      else:
           sub_title='Top_Subtitle'
      comments_list=list()
+     authors_list=list()
      comment_iterator=re.finditer(NEW_LINE, subheading)
-     last_comment=0
+     comment_begin=0
      for comment in comment_iterator:
-          if len(subheading[last_comment:comment.end()])>10:
-               comments_list.append(subheading[last_comment:comment.end()])
-               last_comment=comment.end()
-          else:
-               last_comment=comment.end()               
-     comments_list.append(subheading[last_comment:-1])
-     return comments_list, sub_title
+          author=re.search(ALL,subheading[comment_begin:comment.end()])
+          if author:
+               comments_list.append(subheading[comment_begin:comment.end()])
+               authors_list.append(subheading[comment_begin+author.start():comment_begin+author.end()])
+               comment_begin=comment.end()
+     author=re.search(ALL,subheading[comment_begin:-1])
+     if author:
+          comments_list.append(subheading[comment_begin:-1])
+          authors_list.append(subheading[comment_begin+author.start():comment_begin+author.end()])
+     return comments_list, sub_title, authors_list
                                 
 # Find beginning of page, find all subheadings, then loop thorugh and break into a list
 def split_subheadings_into_list (file):
@@ -65,13 +70,10 @@ def main ():
      file=open('/Users/Bennett/Desktop/scraping/778946.txt').read()
      subheading_list=split_subheadings_into_list(file)
      for subheading in subheading_list:
-          comments_list,sub_title=split_into_comments(subheading)
+          comments_list,sub_title,authors_list=split_into_comments(subheading)
           #print(sub_title,': ',comments_list, '\n')
-          comment_num=1
-          for comment in comments_list:
-               identify_comment_metrics(sub_title,comment_num,comment)
-               comment_num+=1
+          for i in range(len(comments_list)):
+               identify_comment_metrics(sub_title,comments_list[i],authors_list[i])
      print(df)
-          
-          
+              
 main()
