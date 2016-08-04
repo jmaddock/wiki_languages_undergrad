@@ -17,6 +17,7 @@ ALL='|'.join([COMMENT_TALK,COMMENT_ANON,COMMENT_REG])
 
 
 # Measures indentation by the number of colons at the beginning of a comment, after bullets or numbering symbols
+# Then creates data frame with all relevant information
 def identify_comment_metrics(sub_title,comment,author):
      global index, df
      indent=0
@@ -29,8 +30,7 @@ def identify_comment_metrics(sub_title,comment,author):
      index+=1        
      
         
-# Identify subheading title, find all comments, then loop through and break them into comments
-# As an added measure, disregards newline markers from subheadings
+# Identify subheading title, find all comments by indentation and author tag, then loop through and break them into comments
 def split_into_comments (subheading):
      if re.match(SUBHEAD, subheading):
           sub_title=re.search(SUBHEAD, subheading)
@@ -66,6 +66,7 @@ def split_subheadings_into_list (file):
      subheading_list.append(file[last_sub:-1])
      return subheading_list
 
+# Linearly runs through all the above functions
 def main ():
      file=open('/Users/Bennett/Desktop/scraping/778946.txt').read()
      subheading_list=split_subheadings_into_list(file)
