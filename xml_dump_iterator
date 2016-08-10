@@ -1,0 +1,8 @@
+import mwxml
+
+dump=mwxml.Dump.from_file(open('/Users/Bennett/Desktop/scraping/simplewiki-latest-pages-meta-current.xml','rb'))
+print(dump.site_info.dbname)
+for page in dump:
+    for revision in page:
+        print(revision)
+    
