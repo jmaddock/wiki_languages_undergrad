@@ -32,6 +32,8 @@ def identify_comment_metrics(sub_title,comment,author):
         
 # Identify subheading title, find all comments by indentation and author tag, then loop through and
 # break them into comments
+## usually returning a bunch of different values (or a "tuple") can be messy
+## instead of returning a list of authors and the title, let's make other methods to get those
 def split_into_comments (subheading):
      if re.match(SUBHEAD, subheading):
           sub_title=re.search(SUBHEAD, subheading)
@@ -56,7 +58,9 @@ def split_into_comments (subheading):
      return comments_list, sub_title, authors_list
                                 
 # Find beginning of page, find all subheadings, then loop thorugh and break into a list
-def split_subheadings_into_list (file):
+## rather than taking an entire file, just assume you're passed a complete "page" of xml.
+## That will make this method simpler (e.g we won't have to find the beginning)
+def split_subheadings_into_list (file): 
      subheading_list=list()
      file=file[re.search(BEGINNING, file).end():-1]
      sub_iterator=re.finditer(SUBHEAD, file)
@@ -67,6 +71,13 @@ def split_subheadings_into_list (file):
      subheading_list.append(file[last_sub:-1])
      return subheading_list
 
+## here's an example of the same code using the mwparserfromhell module.
+import mwparserfromhell
+def jims_split_subheadings_into_list_(wikipedia_page):
+     wikicode = mwparserfromhell.parse(wikipedia_page)
+     subheadings = wikicode.filter_headings()
+     return subheadings
+     
 # Linearly runs through all the above functions
 def main ():
      file=open('/Users/Bennett/Desktop/scraping/778946.txt').read()
