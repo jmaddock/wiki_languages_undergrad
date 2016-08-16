@@ -81,18 +81,26 @@ def parse_page (file):
 
 # Creates page iterator and feeds it into parse_page, appending the resulting dataframe to the master dataframe
 # dump has 400202 elements
+# skip empty talk pages
 def main():
-     global lang, _id_, page_title
+     global lang, _id_, page_title, index
      dump=mwxml.Dump.from_file(open(u'/Users/Bennett/Desktop/scraping/simplewiki-latest-pages-meta-current.xml','rb'))
      for page in dump:
          lang=dump.site_info.dbname
          if page.namespace==1:
              for revision in page:
-                  _id_=revision.page.id
-                  page_title=revision.page.title
-                  try:
-                       parse_page(revision.text)
-                  except TypeError:
-                       print('Type Error, expected string or bytes-like object')
+                  if revision.text==None:
+                       print('Empty: '+ revision.page.title)
+                  else:                      
+                       _id_=revision.page.id
+                       page_title=revision.page.title
+                       try:
+                            parse_page(revision.text)
+                       except TypeError:
+                            print('Type Error, expected string or bytes-like object')
+                            print(revision)
+                            print(revision.text)
+
+     df.to_csv('xml_output.csv',index=False)
 
 main()
