@@ -1,42 +1,38 @@
-import re
-import pandas as pd
+import mwxml, re, pandas as pd
 
-#df_final=pd.DataFrame(columns=['lang','page_id','page_title','subheading_title','user_text','indentation_depth','line_in_subheading'])
-df=pd.DataFrame(columns=['lang','page_id','page_title','subheading_title','user_text','indentation_depth','comment_num'])
+df=pd.DataFrame(columns=['lang','page_id','page_title','subheading_title','user_text','indentation_depth','subheading_line'])
 index=1
      
 # All necessary re-patterns
 MISC=r'(\s*(\[\[[^\]]*]])*\s*.){0,10}'  #matches either a space, a page element (anything between brackets), or any character, up to 10 times
 SUBHEAD=r'==[^=]+==';
-COMMENT_REG=r'\[\[Usuario[^|]+\|[^|]+]]'
-COMMENT_TALK=COMMENT_REG+MISC+r'\[\[Usuario [^|]+:[^|]+\|[^\]]+]]'   # Talk page has a regular comment, some misc, then a talk comment
+COMMENT_REG=r'\[\[User[^|]+\|[^|]+]]'
+COMMENT_TALK=COMMENT_REG+MISC+r'\[\[User[^|]+:[^|]+\|[^\]]+]]'   # Talk page has a regular comment, some misc, then a talk comment
 COMMENT_ANON=r'\{\{[Nn]ofirmado\|[^}]+}}'
-BEGINNING=r'"\*":'
-NEW_LINE=r'\\n\\n|\\n'
+NEW_LINE=r'\n\n|\n'
 ALL='|'.join([COMMENT_TALK,COMMENT_ANON,COMMENT_REG])
 
 
 # Measures indentation by the number of colons at the beginning of a comment, after bullets or numbering symbols
 # Creates data frame with all relevant information
 def identify_comment_metrics(sub_title,comment,author):
-     global index, df
+     global index, lang, _id_, page_title, df, comment_num
      indent=0
      while comment.startswith('*') or comment.startswith('#'):
           comment=comment[1:-1]
      while comment.startswith(':'):
           indent+=1
           comment=comment[1:-1]
-     df.loc[index]=('simple','page_id','page_title',sub_title,author,indent,index)
-     index+=1        
+     df.loc[index]=(lang,_id_,page_title,sub_title,author,indent,comment_num)
+     index+=1
+     
      
         
 # Identify subheading title, find all comments by indentation and author tag, then loop through and
 # break them into comments
-## usually returning a bunch of different values (or a "tuple") can be messy
-## instead of returning a list of authors and the title, let's make other methods to get those
 def split_into_comments (subheading):
      if re.match(SUBHEAD, subheading):
-          sub_title=re.search(SUBHEAD, subheading)
+          sub_title=re.match(SUBHEAD, subheading)
           subheading=subheading[sub_title.end():-1]
           sub_title=sub_title.group()
      else:
@@ -56,13 +52,11 @@ def split_into_comments (subheading):
           comments_list.append(subheading[comment_begin:-1])
           authors_list.append(subheading[comment_begin+author.start():comment_begin+author.end()])
      return comments_list, sub_title, authors_list
-                                
+
+                               
 # Find beginning of page, find all subheadings, then loop thorugh and break into a list
-## rather than taking an entire file, just assume you're passed a complete "page" of xml.
-## That will make this method simpler (e.g we won't have to find the beginning)
-def split_subheadings_into_list (file): 
+def split_subheadings_into_list (file):
      subheading_list=list()
-     file=file[re.search(BEGINNING, file).end():-1]
      sub_iterator=re.finditer(SUBHEAD, file)
      last_sub=0
      for sub in sub_iterator:
@@ -71,23 +65,34 @@ def split_subheadings_into_list (file):
      subheading_list.append(file[last_sub:-1])
      return subheading_list
 
-## here's an example of the same code using the mwparserfromhell module.
-import mwparserfromhell
-def jims_split_subheadings_into_list_(wikipedia_page):
-     wikicode = mwparserfromhell.parse(wikipedia_page)
-     subheadings = wikicode.filter_headings()
-     return subheadings
-     
+
 # Linearly runs through all the above functions
-def main ():
-     file=open('/Users/Bennett/Desktop/scraping/778946.txt').read()
+def parse_page (file):
+     global comment_num
      subheading_list=split_subheadings_into_list(file)
      for subheading in subheading_list:
           comments_list,sub_title,authors_list=split_into_comments(subheading)
-          #print(sub_title,': ',comments_list, '\n')
+          comment_num=1
+          #Use a dictionary for comments and authors?
           for i in range(len(comments_list)):
                identify_comment_metrics(sub_title,comments_list[i],authors_list[i])
-     print(df)
+               comment_num+=1
               
-main()
 
+# Creates page iterator and feeds it into parse_page, appending the resulting dataframe to the master dataframe
+# dump has 400202 elements
+def main():
+     global lang, _id_, page_title
+     dump=mwxml.Dump.from_file(open(u'/Users/Bennett/Desktop/scraping/simplewiki-latest-pages-meta-current.xml','rb'))
+     for page in dump:
+         lang=dump.site_info.dbname
+         if page.namespace==1:
+             for revision in page:
+                  _id_=revision.page.id
+                  page_title=revision.page.title
+                  try:
+                       parse_page(revision.text)
+                  except TypeError:
+                       print('Type Error, expected string or bytes-like object')
+
+main()
