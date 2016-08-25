@@ -14,7 +14,7 @@ ALL='|'.join([COMMENT_TALK,COMMENT_ANON,COMMENT_REG])
 
 # Define comment class
 class comment:
-     global lang, page_id, page_title, comment_num
+     global lang, page_id, page_title, comment_num # JIM: this line is totally unnecessary.  Just delete it.
      def __init__ (self,sub_title,comment_text,user_tag):
           self.lang=lang
           self.page_id=page_id
@@ -24,12 +24,15 @@ class comment:
           self.indent=comment_indents(comment_text)
           
 # Write comments_list to dataframe
+# JIM: this method is basically a copy of pandas.DataFrame.append().  no need to rewrite it
+# JIM: see http://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.append.html
 def add_to_dataframe (comment):
-     global index, comment_num
-     df.loc[index]=(comment.lang,comment.page_id,comment.page_title,comment.subheading_title,comment.username,comment.indent,comment_num)
+     global index, comment_num # JIM: you can delete this line. This isn't the way global variables should be used.
+     df.loc[index]=(comment.lang,comment.page_id,comment.page_title,comment.subheading_title,comment.username,comment.indent,comment_num) # Instead of keeping track of an index use df.append(pd.DataFrame([{}])) to add to the end
      index+=1
 
 # Find indentation by finding the number of starting colons, excluding certain characters
+# JIM: this should be a class method
 def comment_indents (comment_text):
      indent=0
      while comment_text.startswith('*') or comment_text.startswith('#'):
@@ -40,6 +43,7 @@ def comment_indents (comment_text):
      return indent
 
 # Find user name in user tag
+# JIM: this should be class method
 def username_from_usertag (usertag):
     if usertag.startswith('[[User:'):
         try:
@@ -97,7 +101,7 @@ def split_subheadings_into_list (file):
 
 # Linearly runs through all the above functions
 def parse_page (file):
-     global comment_num
+     global comment_num # JIM: don't use globals
      subheading_list=split_subheadings_into_list(file)
      for subheading in subheading_list:
           comments_list=create_comments_list(subheading)
@@ -110,7 +114,7 @@ def parse_page (file):
 # dump has 400202 elements
 # skip empty talk pages
 def main():
-     global lang, page_id, page_title
+     global lang, page_id, page_title # JIM: again, don't use globals.
      dump=mwxml.Dump.from_file(open(u'/Users/Bennett/Desktop/scraping/simplewiki-latest-pages-meta-current.xml','rb'))
      for page in dump:
          lang=dump.site_info.dbname
