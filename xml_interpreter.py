@@ -1,5 +1,6 @@
 import mwxml, re, pandas as pd
 
+## JIM: this should be defined in your main method.  It's not permanent (e.g. it gets changed throughout the program) so it doesn't make sense here.
 df=pd.DataFrame(columns=['lang','page_id','page_title','subheading_title','user_text','indentation_depth','subheading_line'])
 index=1
 
@@ -13,6 +14,7 @@ COMMENT_REG=r'\[\[[Uu]ser[^|\]]{1,55}\|[^|]+]]'
 COMMENT_TALK=COMMENT_REG+MISC+r'\[\[[Uu]ser[^|\]]+:[^|]+\|[^\]]+]]'   # Talk page has a regular comment, some misc, then a talk comment
 COMMENT_ANON=r'\{\{subst:[^|\]]+\|[^}]+}}'
 
+## JIM: it doesn't seem like you need a method for this
 def define_comment_tags (lang_ed):
      global COMMENT_REG, COMMENT_TALK, COMMENT_ANON
      # get tag elements from csv
@@ -22,13 +24,15 @@ def define_comment_tags (lang_ed):
 #     anonymous=lang_df[2]         
      COMMENT_REG=r'\[\[User[^|\]]{1,55}\|[^|]+]]'
      COMMENT_TALK=COMMENT_REG+MISC+r'\[\[User[^|\]]+:[^|]+\|[^\]]+]]'   # Talk page has a regular comment, some misc, then a talk comment
+     ## JIM: the better way to format this would be:
+     ## COMMENT_TALK=r'{0}{1}\[\[User[^|\]]+:[^|]+\|[^\]]+]]'.format(COMMENT_REG,MISC)
      COMMENT_ANON=r'\{\{subst:[^|\]]+\|[^}]+}}'
      return    
 
 
 # Define comment class
 class comment:
-     lang='Unset'
+     lang='Unset' ## JIM: define these in __init__ and use None instead of 'Unset'
      page_id='Unset'
      page_title='Unset'
      def __init__ (self,sub_title,comment_text,user_tag):
