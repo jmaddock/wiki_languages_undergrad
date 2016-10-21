@@ -1,20 +1,17 @@
 import mwxml, re, pandas as pd
 
-## JIM: this should be defined in your main method.  It's not permanent (e.g. it gets changed throughout the program) so it doesn't make sense here.
 df=pd.DataFrame(columns=['lang','page_id','page_title','subheading_title','user_text','indentation_depth','subheading_line'])
-index=1
 
 # All necessary re-patterns
 NEW_LINE=r'\n\n|\n'
-ALL='|'.join([COMMENT_TALK,COMMENT_ANON,COMMENT_REG])
 MISC=r'(\s*(\[\[[^\]]*]])*\s*.){0,10}'  #matches either a space, a page element (anything between brackets), or any character, up to 10 times
 SUBHEAD=r'(?<!=)==[^=].*?==';
 
 COMMENT_REG=r'\[\[[Uu]ser[^|\]]{1,55}\|[^|]+]]'
 COMMENT_TALK=COMMENT_REG+MISC+r'\[\[[Uu]ser[^|\]]+:[^|]+\|[^\]]+]]'   # Talk page has a regular comment, some misc, then a talk comment
 COMMENT_ANON=r'\{\{subst:[^|\]]+\|[^}]+}}'
+ALL='|'.join([COMMENT_TALK,COMMENT_ANON,COMMENT_REG])
 
-## JIM: it doesn't seem like you need a method for this
 def define_comment_tags (lang_ed):
      global COMMENT_REG, COMMENT_TALK, COMMENT_ANON
      # get tag elements from csv
@@ -24,17 +21,13 @@ def define_comment_tags (lang_ed):
 #     anonymous=lang_df[2]         
      COMMENT_REG=r'\[\[User[^|\]]{1,55}\|[^|]+]]'
      COMMENT_TALK=COMMENT_REG+MISC+r'\[\[User[^|\]]+:[^|]+\|[^\]]+]]'   # Talk page has a regular comment, some misc, then a talk comment
-     ## JIM: the better way to format this would be:
-     ## COMMENT_TALK=r'{0}{1}\[\[User[^|\]]+:[^|]+\|[^\]]+]]'.format(COMMENT_REG,MISC)
      COMMENT_ANON=r'\{\{subst:[^|\]]+\|[^}]+}}'
+     ALL='|'.join([COMMENT_TALK,COMMENT_ANON,COMMENT_REG])
      return    
 
 
 # Define comment class
-class comment:
-     lang='Unset' ## JIM: define these in __init__ and use None instead of 'Unset'
-     page_id='Unset'
-     page_title='Unset'
+class comment(object):
      def __init__ (self,sub_title,comment_text,user_tag):
           self.comment_text=comment_text
           self.subheading_title=self.subtitle_from_subtag(sub_title)
@@ -53,14 +46,14 @@ class comment:
      
      # Find user name in user tag
      def username_from_usertag (self,usertag):
-         if usertag.startswith('[[User:'):
+         if usertag==None:
+              username=None
+         elif usertag.startswith('[[User:'):
              try:
                   username=re.match(r'[^|]+',usertag[7:]).group()
              except:
                   print('re-match didnt work: '+usertag)
-                  username='NO USERNAME'
-         elif usertag=='no signed comments':
-              username='no signed comments'
+                  username=None
          else:
              username='ANONYMOUS'
          return username
@@ -102,7 +95,7 @@ def create_comments_list (subheading):
           comments_list.append(comment(sub_title,comment_text,user_tag))
      if comments_list==list():
           comment_text=''
-          user_tag='no signed comments'
+          user_tag=None
           comments_list.append(comment(sub_title,comment_text,user_tag))
      return comments_list
                              
@@ -118,33 +111,33 @@ def split_subheadings_into_list (file):
      return subheading_list
 
 # Linearly runs through all the above functions
-def parse_page (file):
+def parse_page (revision,lang):
+     file=revision.text
      subheading_list=split_subheadings_into_list(file)
      for subheading in subheading_list:
           comments_list=create_comments_list(subheading)
           comment_num=1
           for comment in comments_list:
-               df.loc[len(df)]=(comment.lang,comment.page_id,comment.page_title,comment.subheading_title,comment.username,comment.indent,comment_num)
+               df.loc[len(df)]=(lang,revision.page.id,revision.page.title,comment.subheading_title,comment.username,comment.indent,comment_num)
                # People dont use append to add to dataframes. Efficiency wise dataframes are supposed to be preallocated, so
                # if speed is a concern a different method for writing data (probably to a csv) should be used
                #df=df.append(pandas.DataFrame(data=[[val1,val2,val3]],columns=['column name1', 'column name2']), ignore_index=True)
                comment_num+=1
-              
+            
 # Creates page iterator and feeds it into parse_page, appending the resulting dataframe to the master dataframe
 # skip empty talk pages
 def main():
      dump=mwxml.Dump.from_file(open(u'/Users/Bennett/Desktop/scraping/simplewiki-latest-pages-meta-current.xml','rb'))
      for page in dump:
-         comment.lang=dump.site_info.dbname
+         lang=dump.site_info.dbname
          if page.namespace==1:
              for revision in page:
                   if revision.text==None:
                        print('Empty: '+ revision.page.title)
                   else:
-                       comment.page_id=revision.page.id
-                       comment.page_title=revision.page.title
-                       parse_page(revision.text)
+                       parse_page(revision,lang)
      df.to_csv('xml_output(current).csv',index=False)
 
 if __name__ =='__main__':
      main()
+
