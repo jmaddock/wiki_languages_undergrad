@@ -1,4 +1,4 @@
-import mwxml, re, pandas as pd, argparse, os
+import mwxml, re, pandas as pd, argparse, os, datetime
 from lang_dict import lang_dict
 
 df=pd.DataFrame(columns=['lang','page_id','page_title','subheading_title','user_text','indentation_depth','subheading_line'])
@@ -6,35 +6,33 @@ df=pd.DataFrame(columns=['lang','page_id','page_title','subheading_title','user_
 # All necessary re-patterns
 NEW_LINE=r'\n\n|\n'
 SUBHEAD=r'(?<!=)==[^=].*?=='
-IP_ADD=r'[0-9\.]{9,18}'
 
-anon_count=0
+# Test output utility
+def output_csv(name,lang):
+     df.to_csv('data/'+name+'_xml_output_'+lang+'.csv',index=False,na_rep='None',encoding='utf-8')
+     return
+
+# Encoding for dataframe
+def encode_text(text):
+          try:
+               text=text.encode('raw_unicode_escape').decode('utf-8')
+               return text
+          except:
+               return text
 
 # Create dictionary of regular expressions
 def define_comment_tags (lang):
-     user=lang_dict['user'][lang]
-     anon=lang_dict['anonymous'][lang][0]
-     user_rev=''.join(reversed(user))
-     anon_rev=''.join(reversed(anon))
-     user_list=[]
-     rev_user_list=[]
-     for user in lang_dict['user'][lang]:
-         user_list.append(user)
-         rev_user_list.append(''.join(reversed(user)))
+     user_list=lang_dict['user'][lang]+lang_dict['user']['en']
+     anon_list=lang_dict['anonymous'][lang]+lang_dict['anonymous']['en']
      user='|'.join(user_list)
-     rev_user='|'.join(rev_user_list)
-     anon_list=[]
-     rev_anon_list=[]
-     for anon in lang_dict['anonymous'][lang]:
-         anon_list.append(anon)
-         rev_anon_list.append(''.join(reversed(anon)))
+     rev_user=''.join(reversed('|'.join(reversed(user_list))))
      anon='|'.join(anon_list)
-     rev_anon='|'.join(rev_anon_list)
-     COMMENT_REG=r'\|.{1,55}?:'+user_rev+r'\[\['
-     #COMMENT_REG=r'\|.{1,55}?:.{1,55}?\[\['
+     rev_anon=''.join(reversed('|'.join(reversed(anon_list))))
+     COMMENT_REG=r'\|.{1,55}?:('+rev_user+r')\[\['
      COMMENT_ANON=r'}}.{1,55}?\|('+rev_anon+'){{'
+     # Find suitable text with square or curly brackets
+     #COMMENT_REG=r'\|.{1,55}?:.{1,55}?\[\['
      #COMMENT_ANON=r'}}.{1,55}\|.{1,55}{{'
-     
      
      ALL='|'.join([COMMENT_REG,COMMENT_ANON])
      return ALL
@@ -59,28 +57,44 @@ class comment(object):
      
      # Find user name in user tag
      def username_from_usertag (self,usertag,lang):
-         global anon_count
-         user=lang_dict['user'][lang]
+         user_list=lang_dict['user'][lang]+lang_dict['user']['en']
+         anon_list=lang_dict['anonymous'][lang]+lang_dict['anonymous']['en']
+         user='|'.join(user_list)
+         anon='|'.join(anon_list)
          if usertag==None:
               username=None
-         elif re.match(r'\[\['+user+':',usertag,re.IGNORECASE):
-             username=re.match(r'[^|]+',usertag[3+len(user):]).group()
-         elif re.match(r'{{.{1,55}?\|',usertag):
-             username=usertag[re.match(r'{{.{1,55}?\|',usertag).end():-2];
-             #print(username);
-             #print(usertag);
-             #input('pause');
+         elif re.match(r'\[\[('+user+'):',usertag,re.I):
+             colon_pos=re.search(':',usertag).end()
+             try:
+                  username=re.match(r'[^|]+',usertag[colon_pos:]).group()
+                  #print('correct user: '+username)
+             except:
+                  username=None
+                  print('re.match failed for user-case: '+usertag)
+         elif re.match(r'\{\{('+anon+')\|',usertag,re.I):
+              line_pos=re.search('\|',usertag).end()
+              username=usertag[line_pos:-2]
+              #print('Encoded: '+usertag.encode('raw_unicode_escape').decode('utf-8'))
+              #print('Decoded: '+usertag)
+              #print('Subtitle: '+self.subheading_title)
+         # Use to catch unknown tags
          else:
              username='UNDEFINED'
-             #print(usertag);input('pause')
-         return username
+             try:
+                  print('Encoded: '+usertag.encode('raw_unicode_escape').decode('utf-8'))
+             except:
+                  pass
+             print('Decoded: '+usertag)
+             print('Subtitle: '+self.subheading_title)
+             input('')
+         return encode_text(username)
 
      def subtitle_from_subtag (self,subtag):
           if subtag=="Top_Subtitle":
                sub_title="Top_Subtitle"
           else:
                sub_title=subtag[2:-2].lstrip()
-          return sub_title
+          return encode_text(sub_title)
 
 # Identify subheading title, find all comments by indentation and author tag, then loop through and
 # break them into comments
@@ -98,17 +112,16 @@ def create_comments_list (subheading,lang,ALL):
      for line in newline_iterator:
          #print(subheading[last_end:line.start()]);input('pause')
          reversed_text=''.join(reversed(subheading[last_end:line.end()]))
-         if re.search(ALL,reversed_text):
-               tag_loc=re.search(ALL,reversed_text)
+         if re.search(ALL,reversed_text,re.I):
+               tag_loc=re.search(ALL,reversed_text,re.I)
                comment_text=subheading[last_end:line.start()]
                user_tag=''.join(reversed(reversed_text[tag_loc.start():tag_loc.end()]))
                comments_list.append(comment(sub_title,comment_text,user_tag,lang))
          last_end=line.end()
      # Text does not end with newline, so check the end of the text after the loop
-     author=re.search(ALL,subheading[last_end:])
      reversed_text=''.join(reversed(subheading[last_end:]))
-     if re.search(ALL,reversed_text):
-         tag_loc=re.search(ALL,reversed_text)
+     if re.search(ALL,reversed_text,re.I):
+         tag_loc=re.search(ALL,reversed_text,re.I)
          comment_text=''.join(reversed_text)
          user_tag=''.join(reversed(reversed_text[tag_loc.start():tag_loc.end()]))
          comments_list.append(comment(sub_title,comment_text,user_tag,lang))
@@ -137,7 +150,7 @@ def parse_page (revision,lang,ALL):
           comments_list=create_comments_list(subheading,lang,ALL)
           comment_num=1
           for comment in comments_list:
-               df.loc[len(df)]=(lang,revision.page.id,revision.page.title,comment.subheading_title,comment.username,comment.indent,comment_num)
+               df.loc[len(df)]=(lang,revision.page.id,encode_text(revision.page.title),comment.subheading_title,comment.username,comment.indent,comment_num)
                # People dont use append to add to dataframes. Efficiency wise dataframes are supposed to be preallocated, so
                # if speed is a concern a different method for writing data (probably to a csv) should be used
                #df=df.append(pandas.DataFrame(data=[[val1,val2,val3]],columns=['column name1', 'column name2']), ignore_index=True)
@@ -145,7 +158,7 @@ def parse_page (revision,lang,ALL):
               
 # Creates page iterator and feeds it into parse_page, appending the resulting dataframe to the master dataframe
 # skip empty talk pages
-def parse_dump(lang):
+def parse_dump(lang,output_dir):
      
      # Get dump file
      cwd = os.getcwd()
@@ -164,14 +177,16 @@ def parse_dump(lang):
                        print('Empty: '+ revision.page.title)
                   else:
                        parse_page(revision,lang,ALL)
-     df.to_csv('xml_output('+lang+').csv',index=False,na_rep='None',encoding="utf-8")
-
+     # Export file
+     now=datetime.datetime.now()
+     date='-'.join([str(now.day),str(now.month),str(now.year)[2:]])
+     df.to_csv(output_dir+date+'_xml_output_'+lang+'.csv',index=False,na_rep='None',encoding="utf-8")
 
 # Construct argument parser for command line usage
 def main (input_lang):
      parser=argparse.ArgumentParser()
      parser.add_argument("-l","--lang",help="Define the language of the given wikipedia dump")
-     parser.add_argument("-f","--file",help="Give path to Wikidump")
+     #parser.add_argument("-f","--file",help="Give path to Wikidump")
      parser.add_argument("-o","--output",help="Define output file location")
      args=parser.parse_args()
 
@@ -180,9 +195,14 @@ def main (input_lang):
           lang=input_lang
      else:
           lang=args.lang
+
+     if not (args.output):
+          output_dir='data/'
+     else:
+          output_dir=args.output+'/'
           
-     parse_dump(lang)
+     parse_dump(lang,output_dir)
      return
 
 if __name__ =='__main__':
-     main('es')
+     main('en')
