@@ -1,0 +1,8 @@
+#Define array of languages
+lang_array=(en es fa fi fr he it ja ko nl no pl pt ru sh sv tr uk vi zh)
+
+#Create some number of loops
+for lang in ${lang_array[*]}
+do
+python xml_interpreter\(8\).py -l $lang
+done
