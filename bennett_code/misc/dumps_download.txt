@@ -1,0 +1,15 @@
+!#bin/bash
+
+#Define array of languages
+lang_array=(ar ca cs de en es fa fi fr he it ja ko nl no pl pt ru sh sv tr uk vi zh)
+
+#Create some number of loops
+for lang in ${lang_array[*]}
+do
+str=\“https://dumps.wikimedia.org/
+str+=$lang
+str+=wiki/latest/
+str+=$lang
+str+=wiki-latest-pages-meta-current.xml.bz2\”
+wget str
+done
