@@ -115,8 +115,8 @@ class comment(object):
                sub_title=subtag[2:-2].lstrip()
           return encode_text(sub_title)
 
-# Identify subheading title, find all comments by indentation and author tag, then loop through and
-# break them into comments
+# Find the subheading title, then iterate over the text in sections seperated by newline characters. If a section has a 
+# usertag, use it to create a comment object, then append it to a comment list.
 def create_comments_list (subheading,lang,ALL):
      sub_title=re.match(SUBHEAD, subheading)
      if sub_title:
@@ -127,9 +127,12 @@ def create_comments_list (subheading,lang,ALL):
      comments_list=list()
      last_end=0
      newline_iterator=re.finditer(NEW_LINE, subheading)
-     #Grab last author from each line
+     # There is only one author between two newlines, so iterate through sections of text
+     # and look for a single author
      for line in newline_iterator:
          #print(subheading[last_end:line.start()]);input('pause')
+          # Search the text from back to front, because the usertag is always one of the last elements. This is done
+          # by reversing the text and re expressions
          reversed_text=''.join(reversed(subheading[last_end:line.end()]))
          if re.search(ALL,reversed_text,re.I):
                tag_loc=re.search(ALL,reversed_text,re.I)
@@ -137,7 +140,8 @@ def create_comments_list (subheading,lang,ALL):
                user_tag=''.join(reversed(reversed_text[tag_loc.start():tag_loc.end()]))
                comments_list.append(comment(sub_title,comment_text,user_tag,lang))
          last_end=line.end()
-     # Text does not end with newline, so check the end of the text after the loop
+     # Talk pages do not end with a newline. This means that the text between the last newline and the end of the file
+     # still needs to be checked. This is the same idea show above but outside of the loop.
      reversed_text=''.join(reversed(subheading[last_end:]))
      if re.search(ALL,reversed_text,re.I):
          tag_loc=re.search(ALL,reversed_text,re.I)
@@ -150,7 +154,8 @@ def create_comments_list (subheading,lang,ALL):
           comments_list.append(comment(sub_title,comment_text,user_tag,lang))
      return comments_list
                              
-# Find beginning of page, find all subheadings, then loop thorugh and break into a list
+# Create an iterator for subheading positions, then break-up subheading texts into a list to use later as input
+# to "create_comments_list()"
 def split_subheadings_into_list (file):
      subheading_list=list()
      sub_iterator=re.finditer(SUBHEAD, file)
