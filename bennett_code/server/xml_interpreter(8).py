@@ -166,7 +166,9 @@ def split_subheadings_into_list (file):
      subheading_list.append(file[last_sub:])
      return subheading_list
 
-# Linearly runs through all the above functions
+# Takes a talk page, breaks it up by subheadings using "split_subheadings_into_list()", then creates a list of comments 
+# from each subheading using "create_comments_list()". The list of comments is appended to a dataframe that is eventually
+# output as a csv for the lang.
 def parse_page (revision,lang,ALL):
      file=revision.text
      subheading_list=split_subheadings_into_list(file)
@@ -180,8 +182,9 @@ def parse_page (revision,lang,ALL):
                #df=df.append(pandas.DataFrame(data=[[val1,val2,val3]],columns=['column name1', 'column name2']), ignore_index=True)
                comment_num+=1
               
-# Creates page iterator and feeds it into parse_page, appending the resulting dataframe to the master dataframe
-# skip empty talk pages
+# Finds the dump file for a language given the DUMP_DIRECTORY and naming convention. Iterates over the dump file and
+# runs "parse_page()" on each non-empty talk page (page.namespace==1). Once the dump file is completed, the dataframe 
+# full of data is output to a csv named with the language and current date.
 def parse_dump(lang,output_dir):
      print("Parsing language: "+lang)
      # Get dump file
@@ -191,7 +194,7 @@ def parse_dump(lang,output_dir):
           file_path = DUMP_DIRECTORY+lang+'wiki-latest-pages-meta-current1.xml'
      dump=mwxml.Dump.from_file(open(file_path,'rb'))
      
-     # Parse dump file
+     # Iterate over the dump file, running "parse_page()" on the talk pages
      ALL=define_comment_tags(lang)
      for page in dump:
          if page.namespace==1:
@@ -200,12 +203,13 @@ def parse_dump(lang,output_dir):
                        print('Empty: '+ revision.page.title)
                   else:
                        parse_page(revision,lang,ALL)
-     # Export file
+     # Export csv file
      now=datetime.datetime.now()
      date='-'.join([str(now.day),str(now.month),str(now.year)[2:]])
      df.to_csv(output_dir+date+'_xml_output_'+lang+'.csv',index=False,na_rep='None',encoding="utf-8")
 
-# Construct argument parser for command line usage
+# Takes any command line arguments and runs "parse_dump" with them. If there are no command line arguments, it sets
+# default values.
 def main (input_lang):
      parser=argparse.ArgumentParser()
      parser.add_argument("-l","--lang",help="Define the language of the given wikipedia dump")
@@ -227,6 +231,7 @@ def main (input_lang):
      parse_dump(lang,output_dir)
      return
 
+# If the python file is run without command line, execute it on a specified language. Used for debugging simplicity.
 if __name__ =='__main__':
      main('ca')
 
